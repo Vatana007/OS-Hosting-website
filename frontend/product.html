@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product — ShopHub</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+    <main class="page-container" id="main">
+        <div class="loading">
+            <div class="spinner"></div>
+            <p>Loading product...</p>
+        </div>
+    </main>
+    <script src="/js/api.js"></script>
+    <script src="/js/components.js"></script>
+    <script>
+        let pid;
+        document.addEventListener('DOMContentLoaded', () => {
+            renderNavbar(); renderFooter();
+            pid = new URLSearchParams(location.search).get('id');
+            if (!pid) { location.href = '/'; return; }
+            loadProduct();
+        });
+
+        async function loadProduct() {
+            const c = document.getElementById('main');
+            try {
+                const d = await Api.get(`/products/${pid}`);
+                const p = d.product;
+                const related = d.related || [];
+                document.title = `${p.name} — ShopHub`;
+                const disc = p.comparePrice > p.price ? Math.round((1 - p.price / p.comparePrice) * 100) : 0;
+
+                c.innerHTML = `
+                <div class="breadcrumb">
+                    <a href="/"><i class="fas fa-home"></i> Home</a><i class="fas fa-chevron-right"></i>
+                    <a href="/?category=${p.category}">${p.category}</a><i class="fas fa-chevron-right"></i>
+                    <span style="color:var(--text)">${p.name}</span>
+                </div>
+
+                <div class="product-detail">
+                    <div class="product-gallery">
+                        <img src="${p.image}" alt="${p.name}" onerror="this.src='https://placehold.co/600x600/e2e8f0/64748b?text=Product'">
+                    </div>
+                    <div class="detail-info">
+                        <span class="detail-category"><i class="fas ${catIcon(p.category)}"></i> ${p.category}</span>
+                        <h1>${p.name}</h1>
+                        <div class="detail-rating">${starsHTML(p.rating)} <span class="review-count">${p.numReviews} reviews</span></div>
+                        <div class="detail-price-wrap">
+                            <span class="detail-price">${formatPrice(p.price)}</span>
+                            ${disc ? `<span class="detail-compare">${formatPrice(p.comparePrice)}</span><span class="save-badge"><i class="fas fa-tag"></i> Save ${disc}%</span>` : ''}
+                        </div>
+                        <p class="detail-desc">${p.description}</p>
+                        <div class="detail-features">
+                            <div class="detail-feature"><i class="fas fa-${p.stock > 0 ? 'check-circle' : 'times-circle'}"></i><span class="stock-status ${p.stock > 0 ? 'in-stock' : 'out-stock'}">${p.stock > 0 ? 'In Stock (' + p.stock + ')' : 'Out of Stock'}</span></div>
+                            <div class="detail-feature"><i class="fas fa-truck"></i>${p.price > 50 ? 'Free Shipping' : 'Free over $50'}</div>
+                            <div class="detail-feature"><i class="fas fa-shield-halved"></i>Secure Payment</div>
+                            <div class="detail-feature"><i class="fas fa-rotate-left"></i>30-Day Returns</div>
+                        </div>
+                        ${p.stock > 0 ? `
+                        <div class="qty-wrapper">
+                            <label>Quantity:</label>
+                            <div class="quantity-selector">
+                                <button onclick="chgQty(-1)"><i class="fas fa-minus"></i></button>
+                                <input type="number" id="qty" value="1" min="1" max="${p.stock}" onchange="valQty(${p.stock})">
+                                <button onclick="chgQty(1)"><i class="fas fa-plus"></i></button>
+                            </div>
+                        </div>
+                        <div class="detail-buttons">
+                            <button class="btn btn-primary btn-lg" onclick="addDetail()"><i class="fas fa-cart-plus"></i> Add to Cart</button>
+                            <button class="btn btn-secondary btn-lg btn-icon ${isWishlisted(p._id) ? 'wishlisted' : ''}" onclick="toggleWishlist('${p._id}',this)" style="font-size:1.1rem;width:50px;flex-shrink:0"><i class="fa${isWishlisted(p._id) ? 's' : 'r'} fa-heart"></i></button>
+                        </div>
+                        ` : '<button class="btn btn-secondary btn-lg btn-block" disabled><i class="fas fa-ban"></i> Out of Stock</button>'}
+                    </div>
+                </div>
+
+                ${related.length ? `
+                <div class="related-section">
+                    <h2 class="section-title"><i class="fas fa-wand-magic-sparkles"></i> You May Also Like</h2>
+                    <div class="related-grid">${related.map(r => productCardHTML(r)).join('')}</div>
+                </div>
+                ` : ''}
+
+                <div class="reviews-section">
+                    <h2 class="section-title"><i class="fas fa-star"></i> Customer Reviews (${p.numReviews})</h2>
+                    ${Api.isLoggedIn() ? `
+                    <div class="review-form">
+                        <h3 style="margin-bottom:16px;display:flex;align-items:center;gap:8px"><i class="fas fa-pen" style="color:var(--primary)"></i> Write a Review</h3>
+                        <form onsubmit="submitReview(event)">
+                            <div class="form-group"><label>Rating</label>
+                                <select id="revRating" required>
+                                    <option value="5">★★★★★ Excellent</option><option value="4">★★★★☆ Good</option>
+                                    <option value="3">★★★☆☆ Average</option><option value="2">★★☆☆☆ Poor</option>
+                                    <option value="1">★☆☆☆☆ Terrible</option>
+                                </select>
+                            </div>
+                            <div class="form-group"><label>Your Review</label><textarea id="revComment" required placeholder="Share your experience..."></textarea></div>
+                            <button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane"></i> Submit Review</button>
+                        </form>
+                    </div>
+                    ` : '<div style="padding:20px;background:var(--bg);border-radius:var(--radius-lg);text-align:center;margin-bottom:20px;border:1px solid var(--border)"><a href="/login.html"><i class="fas fa-sign-in-alt"></i> Sign in</a> to write a review</div>'}
+                    <div>
+                        ${!p.reviews.length ? '<div class="empty-state" style="padding:40px"><div class="empty-icon"><i class="far fa-comment-dots"></i></div><h2>No reviews yet</h2><p>Be the first to review this product!</p></div>' :
+                        p.reviews.map(r => `
+                        <div class="review-card">
+                            <div class="review-header">
+                                <div class="reviewer-info">
+                                    <div class="reviewer-avatar">${r.name[0].toUpperCase()}</div>
+                                    <div><div class="reviewer-name">${r.name}</div><div class="review-date">${new Date(r.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</div></div>
+                                </div>
+                                <div>${starsHTML(r.rating)}</div>
+                            </div>
+                            <p class="review-comment">${r.comment}</p>
+                        </div>
+                    `).join('')}
+                    </div>
+                </div>`;
+            } catch (e) {
+                c.innerHTML = `<div class="empty-state"><div class="empty-icon"><i class="fas fa-exclamation-triangle"></i></div><h2>Product not found</h2><p>${e.message}</p><a href="/" class="btn btn-primary"><i class="fas fa-home"></i> Back to Shop</a></div>`;
+            }
+        }
+
+        function chgQty(d) { const i = document.getElementById('qty'); let v = parseInt(i.value) + d; i.value = Math.max(1, Math.min(v, parseInt(i.max))); }
+        function valQty(mx) { const i = document.getElementById('qty'); let v = parseInt(i.value); if (isNaN(v) || v < 1) v = 1; if (v > mx) v = mx; i.value = v; }
+
+        async function addDetail() {
+            if (!Api.isLoggedIn()) { showToast('Please sign in', 'warning'); setTimeout(() => location.href = '/login.html', 1500); return; }
+            try { await Api.post('/cart', { productId: pid, quantity: parseInt(document.getElementById('qty').value) }); showToast('Added to cart! 🛒'); updateCartCount(); }
+            catch (e) { showToast(e.message, 'error'); }
+        }
+
+        async function submitReview(e) {
+            e.preventDefault();
+            try {
+                await Api.post(`/products/${pid}/reviews`, { rating: document.getElementById('revRating').value, comment: document.getElementById('revComment').value });
+                showToast('Review submitted! ⭐');
+                loadProduct();
+            } catch (e) { showToast(e.message, 'error'); }
+        }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shopping Cart — ShopHub</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+    <main class="page-container">
+        <h1 class="section-title"><i class="fas fa-shopping-bag"></i> Shopping Cart</h1>
+        <p class="section-subtitle" id="cartSub">Loading...</p>
+        <div id="cartContent">
+            <div class="loading">
+                <div class="spinner"></div>
+            </div>
+        </div>
+    </main>
+    <script src="/js/api.js"></script>
+    <script src="/js/components.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            renderNavbar(); renderFooter();
+            if (!Api.isLoggedIn()) { location.href = '/login.html'; return; }
+            loadCart();
+        });
+
+        async function loadCart() {
+            const c = document.getElementById('cartContent');
+            const sub = document.getElementById('cartSub');
+            try {
+                const d = await Api.get('/cart');
+                const cart = d.cart;
+                if (!cart.length) {
+                    sub.textContent = '0 items';
+                    c.innerHTML = `<div class="empty-state"><div class="empty-icon"><i class="fas fa-shopping-bag"></i></div><h2>Your cart is empty</h2><p>Discover amazing products and add them to your cart</p><a href="/" class="btn btn-primary btn-lg"><i class="fas fa-shopping-cart"></i> Start Shopping</a></div>`;
+                    return;
+                }
+                const totalItems = cart.reduce((s, i) => s + i.quantity, 0);
+                const subtotal = cart.reduce((s, i) => s + i.product.price * i.quantity, 0);
+                const shipping = subtotal > 50 ? 0 : 9.99;
+                const tax = subtotal * 0.08;
+                const total = subtotal + shipping + tax;
+                sub.textContent = `${totalItems} item(s) in your cart`;
+
+                c.innerHTML = `<div class="cart-layout"><div class="cart-items">
+                    ${cart.map(i => `
+                    <div class="cart-item">
+                        <img src="${i.product.image}" alt="" onclick="location.href='/product.html?id=${i.product._id}'" style="cursor:pointer" onerror="this.src='https://placehold.co/100x100/e2e8f0/64748b?text=•'">
+                        <div class="cart-item-info">
+                            <a href="/product.html?id=${i.product._id}" class="cart-item-name">${i.product.name}</a>
+                            <div class="cart-item-price">${formatPrice(i.product.price)}</div>
+                        </div>
+                        <div class="cart-item-actions">
+                            <div class="quantity-selector">
+                                <button onclick="updCart('${i.product._id}',${i.quantity - 1})"><i class="fas fa-minus"></i></button>
+                                <input type="number" value="${i.quantity}" min="1" max="${i.product.stock}" onchange="updCart('${i.product._id}',this.value)" style="width:50px">
+                                <button onclick="updCart('${i.product._id}',${i.quantity + 1})"><i class="fas fa-plus"></i></button>
+                            </div>
+                            <div class="cart-item-total">${formatPrice(i.product.price * i.quantity)}</div>
+                            <button class="remove-btn" onclick="rmCart('${i.product._id}')" title="Remove"><i class="fas fa-trash-alt"></i></button>
+                        </div>
+                    </div>`).join('')}
+                    <div style="display:flex;gap:12px;justify-content:space-between;flex-wrap:wrap;margin-top:8px">
+                        <button class="btn btn-ghost" onclick="clearCart()"><i class="fas fa-trash"></i> Clear Cart</button>
+                        <a href="/" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Continue Shopping</a>
+                    </div>
+                </div>
+                <div class="order-summary">
+                    <h3><i class="fas fa-receipt"></i> Order Summary</h3>
+                    <div class="summary-row"><span>Subtotal (${totalItems} items)</span><span>${formatPrice(subtotal)}</span></div>
+                    <div class="summary-row"><span>Shipping</span><span class="${shipping === 0 ? 'free-ship' : ''}">${shipping === 0 ? 'FREE' : formatPrice(shipping)}</span></div>
+                    <div class="summary-row"><span>Tax (8%)</span><span>${formatPrice(tax)}</span></div>
+                    <div class="summary-row total"><span>Total</span><span>${formatPrice(total)}</span></div>
+                    ${subtotal < 50 ? `<p style="font-size:.8rem;color:var(--text-muted);margin-top:10px"><i class="fas fa-info-circle"></i> Add $${(50 - subtotal).toFixed(2)} more for free shipping</p>` : ''}
+                    <a href="/checkout.html" class="btn btn-primary btn-block btn-lg" style="margin-top:20px"><i class="fas fa-lock"></i> Secure Checkout</a>
+                    <div style="display:flex;justify-content:center;gap:14px;margin-top:14px;color:var(--text-muted);font-size:1.1rem"><i class="fab fa-cc-visa"></i><i class="fab fa-cc-mastercard"></i><i class="fab fa-cc-amex"></i><i class="fab fa-cc-paypal"></i></div>
+                </div></div>`;
+            } catch (e) { c.innerHTML = `<div class="empty-state"><p>Error: ${e.message}</p></div>`; }
+        }
+
+        async function updCart(pid, qty) { qty = parseInt(qty); if (qty <= 0) return rmCart(pid); try { await Api.put(`/cart/${pid}`, { quantity: qty }); loadCart(); updateCartCount(); } catch (e) { showToast(e.message, 'error'); } }
+        async function rmCart(pid) { try { await Api.delete(`/cart/${pid}`); showToast('Item removed'); loadCart(); updateCartCount(); } catch (e) { showToast(e.message, 'error'); } }
+        async function clearCart() { if (!confirm('Remove all items?')) return; try { await Api.delete('/cart'); showToast('Cart cleared'); loadCart(); updateCartCount(); } catch (e) { showToast(e.message, 'error'); } }
+    </script>
+</body>
+
+</html>

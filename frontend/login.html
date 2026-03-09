@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign In — ShopHub</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+    <div class="auth-page">
+        <div class="auth-card">
+            <div class="auth-logo">
+                <div class="logo-icon"
+                    style="width:52px;height:52px;font-size:1.3rem;margin:0 auto 14px;border-radius:16px"><i
+                        class="fas fa-store"></i></div>
+                <div class="logo" style="justify-content:center;font-size:1.4rem">Shop<span>Hub</span></div>
+            </div>
+            <h1>Welcome Back</h1>
+            <p class="auth-subtitle">Sign in to continue shopping</p>
+            <form id="loginForm" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label><i class="fas fa-envelope"></i> Email</label>
+                    <input type="email" id="email" required placeholder="you@example.com" autocomplete="email">
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-lock"></i> Password</label>
+                    <input type="password" id="password" required placeholder="Enter your password" minlength="6"
+                        autocomplete="current-password">
+                </div>
+                <button type="submit" class="btn btn-primary btn-block btn-lg" id="loginBtn">
+                    <i class="fas fa-sign-in-alt"></i> Sign In
+                </button>
+            </form>
+            <p class="auth-footer">
+                Don't have an account? <a href="/register.html">Create one <i class="fas fa-arrow-right"
+                        style="font-size:.7rem"></i></a>
+            </p>
+            <div class="demo-box">
+                <strong><i class="fas fa-info-circle"></i> Demo Accounts</strong>
+                <div style="margin-top:4px">
+                    <b>Admin:</b> admin@shop.com / admin123<br>
+                    <b>User:</b> john@test.com / password123
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="/js/api.js"></script>
+    <script src="/js/components.js"></script>
+    <script>
+        if (Api.isLoggedIn()) location.href = '/';
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            const btn = document.getElementById('loginBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Signing in...';
+            try {
+                const data = await Api.post('/auth/login', {
+                    email: document.getElementById('email').value,
+                    password: document.getElementById('password').value
+                });
+                Api.setToken(data.token);
+                Api.setUser(data.user);
+                showToast('Welcome back, ' + data.user.name + '!');
+                setTimeout(() => location.href = data.user.role === 'admin' ? '/admin.html' : '/', 700);
+            } catch (e) {
+                showToast(e.message, 'error');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Sign In';
+            }
+        }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Orders — ShopHub</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+    <main class="page-container">
+        <h1 class="section-title"><i class="fas fa-box"></i> My Orders</h1>
+        <p class="section-subtitle" id="ordSub">Loading...</p>
+        <div id="ordContent">
+            <div class="loading">
+                <div class="spinner"></div>
+            </div>
+        </div>
+    </main>
+    <script src="/js/api.js"></script>
+    <script src="/js/components.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            renderNavbar(); renderFooter();
+            if (!Api.isLoggedIn()) { location.href = '/login.html'; return; }
+            loadOrders();
+        });
+
+        async function loadOrders() {
+            const c = document.getElementById('ordContent'), sub = document.getElementById('ordSub');
+            try {
+                const d = await Api.get('/orders');
+                const orders = d.orders;
+                sub.textContent = `${orders.length} order(s)`;
+
+                if (!orders.length) {
+                    c.innerHTML = `<div class="empty-state"><div class="empty-icon"><i class="fas fa-box-open"></i></div><h2>No orders yet</h2><p>Your order history will appear here</p><a href="/" class="btn btn-primary btn-lg"><i class="fas fa-shopping-cart"></i> Start Shopping</a></div>`;
+                    return;
+                }
+
+                c.innerHTML = orders.map(o => {
+                    const si = { pending: 'fa-clock', confirmed: 'fa-check', processing: 'fa-cog fa-spin', shipped: 'fa-truck', delivered: 'fa-check-double', cancelled: 'fa-times-circle' };
+                    const statusIdx = ['pending', 'confirmed', 'processing', 'shipped', 'delivered'].indexOf(o.status);
+                    const isCancelled = o.status === 'cancelled';
+
+                    return `
+            <div class="order-card">
+                <div class="order-header">
+                    <div>
+                        <span class="order-id"><i class="fas fa-hashtag"></i> ${o._id.slice(-8).toUpperCase()}</span>
+                        <span class="order-date" style="margin-left:12px">
+                            <i class="fas fa-calendar-alt"></i>
+                            ${new Date(o.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                        </span>
+                    </div>
+                    <div class="status-badges">
+                        <span class="status-badge status-${o.status}">
+                            <i class="fas ${si[o.status] || 'fa-circle'}"></i> ${o.status}
+                        </span>
+                        <span class="status-badge status-${o.paymentStatus}">
+                            <i class="fas fa-credit-card"></i> ${o.paymentStatus}
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Status Timeline -->
+                <div style="padding:16px 24px;border-bottom:1px solid var(--border-light)">
+                    <div style="display:flex;align-items:center;gap:0;position:relative">
+                        ${['pending', 'confirmed', 'processing', 'shipped', 'delivered'].map((s, i) => {
+                        const isActive = s === o.status;
+                        const isPast = !isCancelled && i < statusIdx;
+                        const isDone = !isCancelled && i <= statusIdx;
+                        return `
+                            ${i > 0 ? `<div style="flex:1;height:3px;background:${isPast || isActive ? 'var(--success)' : 'var(--border)'};transition:background .3s"></div>` : ''}
+                            <div style="
+                                width:${isActive ? '32px' : '24px'};
+                                height:${isActive ? '32px' : '24px'};
+                                border-radius:50%;
+                                background:${isActive ? 'var(--primary)' : isDone ? 'var(--success)' : 'var(--bg)'};
+                                border:2px solid ${isActive ? 'var(--primary)' : isDone ? 'var(--success)' : 'var(--border)'};
+                                display:flex;align-items:center;justify-content:center;
+                                color:${isDone || isActive ? 'white' : 'var(--text-muted)'};
+                                font-size:${isActive ? '.7rem' : '.55rem'};
+                                flex-shrink:0;
+                                position:relative;
+                                z-index:1;
+                                transition:all .3s;
+                                ${isCancelled ? 'opacity:.3' : ''}
+                            " title="${s}">
+                                <i class="fas ${isDone && !isActive ? 'fa-check' : si[s].replace(' fa-spin', '')}"></i>
+                            </div>`;
+                    }).join('')}
+                    </div>
+                    <div style="display:flex;justify-content:space-between;margin-top:6px;padding:0 0">
+                        ${['Pending', 'Confirmed', 'Processing', 'Shipped', 'Delivered'].map((s, i) => `
+                            <span style="font-size:.65rem;color:${i <= statusIdx && !isCancelled ? 'var(--text)' : 'var(--text-muted)'};font-weight:${i === statusIdx ? '700' : '400'};text-align:center;flex:1;${i === 0 ? 'text-align:left' : i === 4 ? 'text-align:right' : ''}">${s}</span>
+                        `).join('')}
+                    </div>
+                    ${isCancelled ? '<div style="text-align:center;margin-top:8px;color:var(--danger);font-weight:600;font-size:.82rem"><i class="fas fa-times-circle"></i> Order Cancelled</div>' : ''}
+                </div>
+
+                <!-- Order Items -->
+                <div class="order-items">
+                    ${o.items.map(i => `
+                    <div class="order-item-row">
+                        <img src="${i.image}" alt="" onerror="this.src='https://placehold.co/44x44/e2e8f0/64748b?text=•'">
+                        <span class="item-name">${i.name}</span>
+                        <span class="item-qty">× ${i.quantity}</span>
+                        <span class="item-price">${formatPrice(i.price * i.quantity)}</span>
+                    </div>`).join('')}
+                </div>
+
+                <!-- Footer -->
+                <div class="order-footer">
+                    <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;font-size:.82rem;color:var(--text-muted)">
+                        <span><i class="fas fa-map-marker-alt" style="color:var(--primary)"></i> ${o.shippingAddress.city}, ${o.shippingAddress.state}</span>
+                        <span><i class="fas fa-money-bill" style="color:var(--success)"></i> ${o.paymentMethod.toUpperCase()}</span>
+                        ${o.trackingNumber ? `<span style="background:var(--info-bg);color:var(--info);padding:3px 10px;border-radius:var(--radius-full);font-weight:600;font-size:.78rem"><i class="fas fa-barcode"></i> ${o.trackingNumber}</span>` : ''}
+                    </div>
+                    <span class="order-total">Total: ${formatPrice(o.totalAmount)}</span>
+                </div>
+            </div>`;
+                }).join('');
+            } catch (e) {
+                c.innerHTML = `<div class="empty-state"><p>Error: ${e.message}</p></div>`;
+            }
+        }
+    </script>
+</body>
+
+</html>

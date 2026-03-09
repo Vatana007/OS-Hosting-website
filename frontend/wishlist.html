@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wishlist — ShopHub</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+    <main class="page-container">
+        <h1 class="section-title"><i class="fas fa-heart"></i> My Wishlist</h1>
+        <p class="section-subtitle" id="wishSub">Loading...</p>
+        <div class="products-grid" id="wishGrid">
+            <div class="loading">
+                <div class="spinner"></div>
+            </div>
+        </div>
+    </main>
+    <script src="/js/api.js"></script>
+    <script src="/js/components.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            renderNavbar(); renderFooter();
+            if (!Api.isLoggedIn()) { location.href = '/login.html'; return; }
+            loadWish();
+        });
+
+        async function loadWish() {
+            const grid = document.getElementById('wishGrid'), sub = document.getElementById('wishSub');
+            try {
+                const d = await Api.get('/wishlist');
+                sub.textContent = `${d.wishlist.length} saved items`;
+                if (!d.wishlist.length) {
+                    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon"><i class="far fa-heart"></i></div><h2>Wishlist is empty</h2><p>Save products you love and they'll appear here</p><a href="/" class="btn btn-primary btn-lg"><i class="fas fa-shopping-bag"></i> Browse Products</a></div>`;
+                    return;
+                }
+                // Set userWishlist so productCardHTML works correctly
+                userWishlist = d.wishlist.map(p => p._id);
+                grid.innerHTML = d.wishlist.map(p => productCardHTML(p)).join('');
+            } catch (e) { grid.innerHTML = `<p>Error: ${e.message}</p>`; }
+        }
+    </script>
+</body>
+
+</html>

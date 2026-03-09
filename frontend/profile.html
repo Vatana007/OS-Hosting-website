@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Profile — ShopHub</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+    <main class="page-container" id="profilePage">
+        <div class="loading">
+            <div class="spinner"></div>
+        </div>
+    </main>
+    <script src="/js/api.js"></script>
+    <script src="/js/components.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            renderNavbar(); renderFooter();
+            if (!Api.isLoggedIn()) { location.href = '/login.html'; return; }
+            loadProfile();
+        });
+
+        async function loadProfile() {
+            const c = document.getElementById('profilePage');
+            try {
+                const d = await Api.get('/auth/me'), u = d.user;
+                c.innerHTML = `
+                <div class="profile-layout">
+                    <div class="profile-sidebar">
+                        <div class="profile-header">
+                            <div class="profile-avatar">${u.name[0].toUpperCase()}</div>
+                            <h3>${u.name}</h3>
+                            <p>${u.email}</p>
+                        </div>
+                        <div class="profile-nav">
+                            <a href="#" class="active" onclick="showTab('info',this);return false"><i class="fas fa-user"></i> Personal Info</a>
+                            <a href="#" onclick="showTab('address',this);return false"><i class="fas fa-map-marker-alt"></i> Address</a>
+                            <a href="#" onclick="showTab('password',this);return false"><i class="fas fa-lock"></i> Password</a>
+                            <a href="/orders.html"><i class="fas fa-box"></i> My Orders</a>
+                            <a href="/wishlist.html"><i class="fas fa-heart"></i> Wishlist</a>
+                        </div>
+                    </div>
+                    <div class="profile-content" id="tabContent"></div>
+                </div>`;
+                showInfoTab(u);
+            } catch (e) { c.innerHTML = `<p>Error: ${e.message}</p>`; }
+        }
+
+        function showTab(tab, el) {
+            document.querySelectorAll('.profile-nav a').forEach(a => a.classList.remove('active'));
+            if (el) el.classList.add('active');
+            Api.get('/auth/me').then(d => {
+                if (tab === 'info') showInfoTab(d.user);
+                else if (tab === 'address') showAddressTab(d.user);
+                else if (tab === 'password') showPasswordTab();
+            });
+        }
+
+        function showInfoTab(u) {
+            document.getElementById('tabContent').innerHTML = `
+                <h2><i class="fas fa-user"></i> Personal Information</h2>
+                <form onsubmit="saveInfo(event)">
+                    <div class="form-group"><label><i class="fas fa-user"></i> Full Name</label><input type="text" id="pName" value="${u.name}" required></div>
+                    <div class="form-group"><label><i class="fas fa-envelope"></i> Email</label><input type="email" value="${u.email}" disabled style="opacity:.6;cursor:not-allowed"></div>
+                    <div class="form-group"><label><i class="fas fa-phone"></i> Phone</label><input type="text" id="pPhone" value="${u.phone || ''}" placeholder="Your phone number"></div>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Changes</button>
+                </form>`;
+        }
+
+        function showAddressTab(u) {
+            const a = u.address || {};
+            document.getElementById('tabContent').innerHTML = `
+                <h2><i class="fas fa-map-marker-alt"></i> Shipping Address</h2>
+                <form onsubmit="saveAddr(event)">
+                    <div class="form-group"><label>Street</label><input type="text" id="aStr" value="${a.street || ''}" placeholder="123 Main Street"></div>
+                    <div class="form-row"><div class="form-group"><label>City</label><input type="text" id="aCity" value="${a.city || ''}" placeholder="New York"></div>
+                    <div class="form-group"><label>State</label><input type="text" id="aSt" value="${a.state || ''}" placeholder="NY"></div></div>
+                    <div class="form-row"><div class="form-group"><label>ZIP</label><input type="text" id="aZip" value="${a.zip || ''}" placeholder="10001"></div>
+                    <div class="form-group"><label>Country</label><input type="text" id="aCo" value="${a.country || 'US'}" placeholder="US"></div></div>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Address</button>
+                </form>`;
+        }
+
+        function showPasswordTab() {
+            document.getElementById('tabContent').innerHTML = `
+                <h2><i class="fas fa-lock"></i> Change Password</h2>
+                <form onsubmit="changePw(event)">
+                    <div class="form-group"><label>Current Password</label><input type="password" id="curPw" required minlength="6"></div>
+                    <div class="form-group"><label>New Password</label><input type="password" id="newPw" required minlength="6"></div>
+                    <div class="form-group"><label>Confirm New Password</label><input type="password" id="cfmPw" required minlength="6"></div>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-key"></i> Update Password</button>
+                </form>`;
+        }
+
+        async function saveInfo(e) {
+            e.preventDefault();
+            try {
+                const d = await Api.put('/auth/profile', { name: document.getElementById('pName').value, phone: document.getElementById('pPhone').value });
+                const u = Api.getUser(); u.name = d.user.name; Api.setUser(u);
+                showToast('Profile updated!');
+            } catch (e) { showToast(e.message, 'error'); }
+        }
+
+        async function saveAddr(e) {
+            e.preventDefault();
+            try {
+                await Api.put('/auth/profile', { address: { street: document.getElementById('aStr').value, city: document.getElementById('aCity').value, state: document.getElementById('aSt').value, zip: document.getElementById('aZip').value, country: document.getElementById('aCo').value } });
+                showToast('Address saved!');
+            } catch (e) { showToast(e.message, 'error'); }
+        }
+
+        async function changePw(e) {
+            e.preventDefault();
+            if (document.getElementById('newPw').value !== document.getElementById('cfmPw').value) { showToast('Passwords do not match', 'error'); return; }
+            try {
+                const d = await Api.put('/auth/password', { currentPassword: document.getElementById('curPw').value, newPassword: document.getElementById('newPw').value });
+                Api.setToken(d.token);
+                showToast('Password updated! 🔒');
+                e.target.reset();
+            } catch (e) { showToast(e.message, 'error'); }
+        }
+    </script>
+</body>
+
+</html>

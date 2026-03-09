@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShopHub — Premium Online Store</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛍</text></svg>">
+</head>
+
+<body>
+    <section class="hero">
+        <div class="hero-badge"><i class="fas fa-sparkles"></i> New Collection Available</div>
+        <h1>Discover Premium Products</h1>
+        <p>Curated quality items at unbeatable prices with fast shipping and easy returns.</p>
+        <div class="hero-search" style="position:relative">
+            <input type="text" id="heroSearch" placeholder="Search for anything...">
+            <button onclick="doSearch()"><i class="fas fa-search"></i> Search</button>
+        </div>
+        <div class="hero-features">
+            <div class="feature"><i class="fas fa-truck-fast"></i> Free Shipping</div>
+            <div class="feature"><i class="fas fa-shield-halved"></i> Secure Payment</div>
+            <div class="feature"><i class="fas fa-rotate-left"></i> 30-Day Returns</div>
+            <div class="feature"><i class="fas fa-headset"></i> 24/7 Support</div>
+        </div>
+    </section>
+
+    <main class="page-container">
+        <div class="filter-bar">
+            <div class="category-pills" id="catPills">
+                <button class="pill active" onclick="filterCat('',this)"><i class="fas fa-grip"></i> All</button>
+            </div>
+            <select id="sortSel" onchange="applySort()">
+                <option value="newest">✨ Newest</option>
+                <option value="popular">🔥 Popular</option>
+                <option value="price_asc">💰 Low → High</option>
+                <option value="price_desc">💎 High → Low</option>
+                <option value="rating">⭐ Top Rated</option>
+            </select>
+        </div>
+
+        <div class="section-header">
+            <div>
+                <h2 class="section-title" id="secTitle"><i class="fas fa-fire"></i> All Products</h2>
+                <p class="section-subtitle" id="secSub">Browse our collection</p>
+            </div>
+            <span class="results-count" id="resCount"></span>
+        </div>
+
+        <div class="products-grid" id="prodGrid"></div>
+        <div class="pagination" id="paging"></div>
+    </main>
+
+    <script src="/js/api.js"></script>
+    <script src="/js/components.js"></script>
+    <script>
+        let pg = 1, cat = '', sort = 'newest', search = '';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            renderNavbar();
+            renderFooter();
+
+            const params = new URLSearchParams(location.search);
+            if (params.get('category')) cat = params.get('category');
+            if (params.get('search')) { search = params.get('search'); document.getElementById('heroSearch').value = search; }
+
+            loadCats();
+            loadProds();
+            setupLiveSearch('heroSearch');
+
+            document.getElementById('heroSearch').addEventListener('keypress', e => {
+                if (e.key === 'Enter') doSearch();
+            });
+        });
+
+        async function loadCats() {
+            try {
+                const d = await Api.get('/products/categories');
+                const el = document.getElementById('catPills');
+                el.innerHTML = `<button class="pill ${!cat ? 'active' : ''}" onclick="filterCat('',this)"><i class="fas fa-grip"></i> All</button>`;
+                d.categories.forEach(c => {
+                    el.innerHTML += `<button class="pill ${cat === c ? 'active' : ''}" onclick="filterCat('${c}',this)"><i class="fas ${catIcon(c)}"></i> ${c}</button>`;
+                });
+            } catch (e) { /* ignore */ }
+        }
+
+        async function loadProds() {
+            const grid = document.getElementById('prodGrid');
+            showSkeleton(grid, 8);
+
+            try {
+                let q = `?page=${pg}&limit=12&sort=${sort}`;
+                if (cat) q += `&category=${cat}`;
+                if (search) q += `&search=${encodeURIComponent(search)}`;
+
+                const d = await Api.get(`/products${q}`);
+                const { products, pagination } = d;
+
+                // Update titles
+                const title = document.getElementById('secTitle');
+                const sub = document.getElementById('secSub');
+                const rc = document.getElementById('resCount');
+
+                if (search) {
+                    title.innerHTML = `<i class="fas fa-search"></i> "${search}"`;
+                    sub.textContent = 'Search results';
+                } else if (cat) {
+                    title.innerHTML = `<i class="fas ${catIcon(cat)}"></i> ${cat}`;
+                    sub.textContent = `${pagination.total} products`;
+                } else {
+                    title.innerHTML = '<i class="fas fa-fire"></i> All Products';
+                    sub.textContent = 'Browse our collection';
+                }
+                rc.textContent = `${pagination.total} products`;
+
+                if (!products.length) {
+                    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon"><i class="fas fa-search"></i></div><h2>No products found</h2><p>Try a different search or category</p><a href="/" class="btn btn-primary"><i class="fas fa-home"></i> View All</a></div>`;
+                    document.getElementById('paging').innerHTML = '';
+                    return;
+                }
+
+                grid.innerHTML = products.map(p => productCardHTML(p)).join('');
+
+                // Pagination
+                const pe = document.getElementById('paging');
+                if (pagination.pages <= 1) { pe.innerHTML = ''; return; }
+                let h = `<button ${pagination.page <= 1 ? 'disabled' : ''} onclick="goPage(${pagination.page - 1})"><i class="fas fa-chevron-left"></i></button>`;
+                for (let i = 1; i <= pagination.pages; i++) {
+                    if (i === 1 || i === pagination.pages || Math.abs(i - pagination.page) <= 2) {
+                        h += `<button class="${i === pagination.page ? 'active' : ''}" onclick="goPage(${i})">${i}</button>`;
+                    } else if (Math.abs(i - pagination.page) === 3) {
+                        h += '<button disabled>…</button>';
+                    }
+                }
+                h += `<button ${pagination.page >= pagination.pages ? 'disabled' : ''} onclick="goPage(${pagination.page + 1})"><i class="fas fa-chevron-right"></i></button>`;
+                pe.innerHTML = h;
+            } catch (e) {
+                grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><p>Error loading products</p></div>';
+            }
+        }
+
+        function goPage(p) { pg = p; loadProds(); window.scrollTo({ top: 360, behavior: 'smooth' }); }
+        function filterCat(c, el) {
+            cat = c; pg = 1; search = '';
+            document.getElementById('heroSearch').value = '';
+            document.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+            if (el) el.classList.add('active');
+            loadProds();
+        }
+        function doSearch() { search = document.getElementById('heroSearch').value.trim(); pg = 1; cat = ''; loadProds(); }
+        function applySort() { sort = document.getElementById('sortSel').value; pg = 1; loadProds(); }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard — ShopHub</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+    <main class="page-container">
+        <div class="admin-layout">
+            <div class="admin-sidebar">
+                <h3>Admin Panel</h3>
+                <a href="#" class="active" onclick="showTab('dash',this);return false"><i class="fas fa-chart-line"></i>
+                    Dashboard</a>
+                <a href="#" onclick="showTab('prods',this);return false"><i class="fas fa-boxes-stacked"></i>
+                    Products</a>
+                <a href="#" onclick="showTab('ords',this);return false"><i class="fas fa-file-invoice"></i> Orders</a>
+                <a href="#" onclick="showTab('usrs',this);return false"><i class="fas fa-users"></i> Users</a>
+            </div>
+            <div class="admin-content" id="adminC">
+                <div class="loading">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Product Modal -->
+    <div class="modal-overlay" id="prodModal" style="display:none">
+        <div class="modal modal-admin">
+            <button class="modal-close" onclick="closeModal()"><i class="fas fa-times"></i></button>
+            <h2 id="modTitle"><i class="fas fa-plus-circle"></i> Add Product</h2>
+            <form onsubmit="saveProd(event)">
+                <input type="hidden" id="editId">
+                <div class="form-group"><label>Product Name</label><input type="text" id="pName" required
+                        maxlength="200"></div>
+                <div class="form-group"><label>Description</label><textarea id="pDesc" required
+                        maxlength="2000"></textarea></div>
+                <div class="form-row">
+                    <div class="form-group"><label>Price ($)</label><input type="number" id="pPrice" required min="0"
+                            step="0.01"></div>
+                    <div class="form-group"><label>Compare Price ($)</label><input type="number" id="pComp" min="0"
+                            step="0.01" value="0"></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Category</label>
+                        <select id="pCat" required>
+                            <option value="Electronics">Electronics</option>
+                            <option value="Clothing">Clothing</option>
+                            <option value="Books">Books</option>
+                            <option value="Home">Home</option>
+                            <option value="Sports">Sports</option>
+                            <option value="Toys">Toys</option>
+                            <option value="Beauty">Beauty</option>
+                            <option value="Food">Food</option>
+                        </select>
+                    </div>
+                    <div class="form-group"><label>Stock</label><input type="number" id="pStock" required min="0"
+                            value="0"></div>
+                </div>
+                <div class="form-group"><label>Image URL</label><input type="url" id="pImg" placeholder="https://...">
+                </div>
+                <div class="form-group"><label style="cursor:pointer"><input type="checkbox" id="pFeat"
+                            style="margin-right:8px;accent-color:var(--primary)"> Featured Product</label></div>
+                <div style="display:flex;gap:12px">
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Product</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="/js/api.js"></script>
+    <script src="/js/components.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            renderNavbar();
+            if (!Api.isLoggedIn() || !Api.isAdmin()) { location.href = '/'; return; }
+            loadDash();
+        });
+
+        function showTab(tab, el) {
+            document.querySelectorAll('.admin-sidebar a').forEach(a => a.classList.remove('active'));
+            if (el) el.classList.add('active');
+            ({ dash: loadDash, prods: loadProds, ords: loadOrds, usrs: loadUsrs })[tab]();
+        }
+
+        async function loadDash() {
+            const c = document.getElementById('adminC'); showLoading(c);
+            try {
+                const d = await Api.get('/admin/stats'), s = d.stats;
+                c.innerHTML = `
+                <h2 style="margin-bottom:24px;display:flex;align-items:center;gap:10px"><i class="fas fa-chart-line" style="color:var(--primary)"></i> Dashboard</h2>
+                <div class="stats-grid">
+                    <div class="stat-card"><div class="stat-icon"><i class="fas fa-dollar-sign"></i></div><div class="stat-value">${formatPrice(s.totalRevenue)}</div><div class="stat-label">Total Revenue</div></div>
+                    <div class="stat-card"><div class="stat-icon"><i class="fas fa-shopping-cart"></i></div><div class="stat-value">${s.totalOrders}</div><div class="stat-label">Total Orders</div></div>
+                    <div class="stat-card"><div class="stat-icon"><i class="fas fa-box"></i></div><div class="stat-value">${s.totalProducts}</div><div class="stat-label">Products</div></div>
+                    <div class="stat-card"><div class="stat-icon"><i class="fas fa-users"></i></div><div class="stat-value">${s.totalUsers}</div><div class="stat-label">Customers</div></div>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+                    <div><h3 style="margin-bottom:14px"><i class="fas fa-clock" style="color:var(--primary);margin-right:8px"></i>Recent Orders</h3>
+                        <div class="table-wrap"><table class="admin-table"><thead><tr><th>Order</th><th>Customer</th><th>Total</th><th>Status</th></tr></thead>
+                        <tbody>${s.recentOrders.map(o => `<tr><td><strong>#${o._id.slice(-6).toUpperCase()}</strong></td><td>${o.user?.name || 'N/A'}</td><td>${formatPrice(o.totalAmount)}</td><td><span class="status-badge status-${o.status}">${o.status}</span></td></tr>`).join('')}</tbody></table></div>
+                    </div>
+                    <div><h3 style="margin-bottom:14px"><i class="fas fa-exclamation-triangle" style="color:var(--warning);margin-right:8px"></i>Low Stock</h3>
+                        ${!s.lowStock.length ? '<p style="color:var(--text-muted);padding:20px"><i class="fas fa-check-circle" style="color:var(--success)"></i> All well stocked</p>' : `
+                        <div class="table-wrap"><table class="admin-table"><thead><tr><th>Product</th><th>Stock</th></tr></thead>
+                        <tbody>${s.lowStock.map(p => `<tr><td>${p.name}</td><td><span style="color:${p.stock === 0 ? 'var(--danger)' : 'var(--warning)'};font-weight:700">${p.stock}</span></td></tr>`).join('')}</tbody></table></div>`}
+                    </div>
+                </div>`;
+            } catch (e) { c.innerHTML = `<p>Error: ${e.message}</p>`; }
+        }
+
+        async function loadProds() {
+            const c = document.getElementById('adminC'); showLoading(c);
+            try {
+                const d = await Api.get('/admin/products');
+                c.innerHTML = `
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:12px">
+                    <h2><i class="fas fa-boxes-stacked" style="color:var(--primary);margin-right:8px"></i>Products (${d.products.length})</h2>
+                    <button class="btn btn-primary" onclick="openModal()"><i class="fas fa-plus"></i> Add Product</button>
+                </div>
+                <div class="table-wrap"><table class="admin-table"><thead><tr><th>Image</th><th>Name</th><th>Category</th><th>Price</th><th>Stock</th><th>Rating</th><th>Actions</th></tr></thead>
+                <tbody>${d.products.map(p => `<tr>
+                    <td><img src="${p.image}" alt="" onerror="this.src='https://placehold.co/46x46/e2e8f0/64748b?text=P'"></td>
+                    <td><strong>${p.name}</strong>${p.featured ? ' <i class="fas fa-star" style="color:var(--accent);font-size:.7rem"></i>' : ''}</td>
+                    <td><i class="fas ${catIcon(p.category)}" style="color:var(--text-muted);font-size:.7rem;margin-right:4px"></i>${p.category}</td>
+                    <td><strong>${formatPrice(p.price)}</strong></td>
+                    <td><span style="color:${p.stock <= 5 ? 'var(--danger)' : 'var(--success)'};font-weight:700">${p.stock}</span></td>
+                    <td>${starsHTML(p.rating)} <span style="color:var(--text-muted);font-size:.75rem">(${p.numReviews})</span></td>
+                    <td class="actions">
+                        <button class="btn btn-sm btn-secondary" onclick='editProd(${JSON.stringify(p)})'><i class="fas fa-pen"></i></button>
+                        <button class="btn btn-sm btn-danger" onclick="delProd('${p._id}')"><i class="fas fa-trash"></i></button>
+                    </td>
+                </tr>`).join('')}</tbody></table></div>`;
+            } catch (e) { c.innerHTML = `<p>Error: ${e.message}</p>`; }
+        }
+
+        function openModal(p = null) {
+            document.getElementById('modTitle').innerHTML = p ? '<i class="fas fa-pen-to-square"></i> Edit Product' : '<i class="fas fa-plus-circle"></i> Add Product';
+            document.getElementById('editId').value = p ? p._id : '';
+            document.getElementById('pName').value = p ? p.name : '';
+            document.getElementById('pDesc').value = p ? p.description : '';
+            document.getElementById('pPrice').value = p ? p.price : '';
+            document.getElementById('pComp').value = p ? (p.comparePrice || 0) : '0';
+            document.getElementById('pCat').value = p ? p.category : 'Electronics';
+            document.getElementById('pStock').value = p ? p.stock : '0';
+            document.getElementById('pImg').value = p ? (p.image || '') : '';
+            document.getElementById('pFeat').checked = p ? p.featured : false;
+            document.getElementById('prodModal').style.display = 'flex';
+        }
+        function editProd(p) { openModal(p); }
+        function closeModal() { document.getElementById('prodModal').style.display = 'none'; }
+
+        async function saveProd(e) {
+            e.preventDefault();
+            const id = document.getElementById('editId').value;
+            const data = {
+                name: document.getElementById('pName').value, description: document.getElementById('pDesc').value,
+                price: parseFloat(document.getElementById('pPrice').value), comparePrice: parseFloat(document.getElementById('pComp').value) || 0,
+                category: document.getElementById('pCat').value, stock: parseInt(document.getElementById('pStock').value),
+                image: document.getElementById('pImg').value || 'https://placehold.co/400x400/e2e8f0/64748b?text=Product',
+                featured: document.getElementById('pFeat').checked
+            };
+            try {
+                if (id) { await Api.put(`/admin/products/${id}`, data); showToast('Product updated!'); }
+                else { await Api.post('/admin/products', data); showToast('Product created!'); }
+                closeModal(); loadProds();
+            } catch (e) { showToast(e.message, 'error'); }
+        }
+
+        async function delProd(id) {
+            if (!confirm('Delete this product permanently?')) return;
+            try { await Api.delete(`/admin/products/${id}`); showToast('Product deleted'); loadProds(); } catch (e) { showToast(e.message, 'error'); }
+        }
+
+        async function loadOrds() {
+            const c = document.getElementById('adminC'); showLoading(c);
+            try {
+                const d = await Api.get('/admin/orders');
+                const orders = d.orders;
+
+                c.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:12px">
+            <h2><i class="fas fa-file-invoice" style="color:var(--primary);margin-right:8px"></i>Orders (${orders.length})</h2>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <button class="btn btn-sm ${!orderFilter ? 'btn-primary' : 'btn-secondary'}" onclick="orderFilter='';loadOrds()">All</button>
+                <button class="btn btn-sm ${orderFilter === 'pending' ? 'btn-primary' : 'btn-secondary'}" onclick="orderFilter='pending';loadOrds()">Pending</button>
+                <button class="btn btn-sm ${orderFilter === 'processing' ? 'btn-primary' : 'btn-secondary'}" onclick="orderFilter='processing';loadOrds()">Processing</button>
+                <button class="btn btn-sm ${orderFilter === 'shipped' ? 'btn-primary' : 'btn-secondary'}" onclick="orderFilter='shipped';loadOrds()">Shipped</button>
+                <button class="btn btn-sm ${orderFilter === 'delivered' ? 'btn-primary' : 'btn-secondary'}" onclick="orderFilter='delivered';loadOrds()">Delivered</button>
+            </div>
+        </div>
+
+        ${!filteredOrders(orders).length ?
+                        '<div class="empty-state" style="padding:40px"><div class="empty-icon"><i class="fas fa-inbox"></i></div><h2>No orders found</h2></div>' :
+                        `<div class="table-wrap"><table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Order ID</th>
+                    <th>Customer</th>
+                    <th>Items</th>
+                    <th>Total</th>
+                    <th>Status</th>
+                    <th>Payment</th>
+                    <th>Date</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${filteredOrders(orders).map(o => `
+                <tr>
+                    <td><strong style="color:var(--primary)">#${o._id.slice(-8).toUpperCase()}</strong></td>
+                    <td>
+                        <div style="font-weight:600">${o.user?.name || 'N/A'}</div>
+                        <div style="font-size:.75rem;color:var(--text-muted)">${o.user?.email || ''}</div>
+                    </td>
+                    <td>
+                        <span style="background:var(--bg);padding:2px 8px;border-radius:var(--radius);font-weight:600;font-size:.82rem">
+                            ${o.items.length} item${o.items.length > 1 ? 's' : ''}
+                        </span>
+                    </td>
+                    <td><strong>${formatPrice(o.totalAmount)}</strong></td>
+                    <td><span class="status-badge status-${o.status}"><i class="fas ${statusIcon(o.status)}"></i> ${o.status}</span></td>
+                    <td><span class="status-badge status-${o.paymentStatus}"><i class="fas fa-credit-card"></i> ${o.paymentStatus}</span></td>
+                    <td style="white-space:nowrap;font-size:.82rem;color:var(--text-muted)">${new Date(o.createdAt).toLocaleDateString()}</td>
+                    <td>
+                        <button class="btn btn-sm btn-primary" onclick='openOrderModal(${JSON.stringify(o)})' title="Update Order">
+                            <i class="fas fa-pen"></i>
+                        </button>
+                    </td>
+                </tr>`).join('')}
+            </tbody>
+        </table></div>`}`;
+            } catch (e) { c.innerHTML = `<p>Error: ${e.message}</p>`; }
+        }
+
+        let orderFilter = '';
+
+        function filteredOrders(orders) {
+            if (!orderFilter) return orders;
+            return orders.filter(o => o.status === orderFilter);
+        }
+
+        function statusIcon(status) {
+            const icons = {
+                pending: 'fa-clock',
+                confirmed: 'fa-check',
+                processing: 'fa-cog fa-spin',
+                shipped: 'fa-truck',
+                delivered: 'fa-check-double',
+                cancelled: 'fa-times-circle'
+            };
+            return icons[status] || 'fa-circle';
+        }
+
+        function openOrderModal(order) {
+            // Remove existing modal if any
+            const existing = document.getElementById('orderUpdateModal');
+            if (existing) existing.remove();
+
+            const overlay = document.createElement('div');
+            overlay.className = 'modal-overlay';
+            overlay.id = 'orderUpdateModal';
+            overlay.onclick = function (e) { if (e.target === overlay) overlay.remove(); };
+
+            overlay.innerHTML = `
+    <div class="modal modal-admin" style="max-width:640px">
+        <button class="modal-close" onclick="document.getElementById('orderUpdateModal').remove()">
+            <i class="fas fa-times"></i>
+        </button>
+
+        <h2><i class="fas fa-pen-to-square"></i> Update Order #${order._id.slice(-8).toUpperCase()}</h2>
+
+        <!-- Order Info -->
+        <div style="background:var(--bg);border-radius:var(--radius-lg);padding:16px;margin-bottom:20px;border:1px solid var(--border-light)">
+            <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+                <div>
+                    <div style="font-weight:700;font-size:1rem">${order.user?.name || 'Unknown Customer'}</div>
+                    <div style="color:var(--text-muted);font-size:.82rem">${order.user?.email || ''}</div>
+                </div>
+                <div style="text-align:right">
+                    <div style="font-weight:800;font-size:1.1rem;color:var(--primary)">${formatPrice(order.totalAmount)}</div>
+                    <div style="color:var(--text-muted);font-size:.82rem">${new Date(order.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
+                </div>
+            </div>
+
+            <!-- Order Items -->
+            <div style="border-top:1px solid var(--border-light);padding-top:12px">
+                ${order.items.map(item => `
+                <div style="display:flex;align-items:center;gap:10px;padding:6px 0;font-size:.88rem">
+                    <img src="${item.image}" alt="" style="width:36px;height:36px;border-radius:6px;object-fit:cover" onerror="this.src='https://placehold.co/36x36/e2e8f0/64748b?text=•'">
+                    <span style="flex:1">${item.name}</span>
+                    <span style="color:var(--text-muted)">×${item.quantity}</span>
+                    <span style="font-weight:600">${formatPrice(item.price * item.quantity)}</span>
+                </div>`).join('')}
+            </div>
+
+            <!-- Shipping Address -->
+            <div style="border-top:1px solid var(--border-light);padding-top:12px;margin-top:8px;font-size:.85rem;color:var(--text-secondary)">
+                <i class="fas fa-map-marker-alt" style="color:var(--primary);margin-right:6px"></i>
+                ${order.shippingAddress.street}, ${order.shippingAddress.city}, ${order.shippingAddress.state} ${order.shippingAddress.zip}, ${order.shippingAddress.country}
+            </div>
+
+            ${order.notes ? `<div style="border-top:1px solid var(--border-light);padding-top:12px;margin-top:8px;font-size:.85rem;color:var(--text-secondary)"><i class="fas fa-sticky-note" style="color:var(--accent);margin-right:6px"></i> ${order.notes}</div>` : ''}
+        </div>
+
+        <!-- Status Timeline -->
+        <div style="margin-bottom:20px">
+            <label style="font-weight:600;font-size:.88rem;display:block;margin-bottom:8px;color:var(--text)">
+                <i class="fas fa-timeline" style="color:var(--primary);margin-right:6px"></i> Order Progress
+            </label>
+            <div style="display:flex;gap:4px;flex-wrap:wrap" id="statusTimeline">
+                ${['pending', 'confirmed', 'processing', 'shipped', 'delivered'].map(s => {
+                const isActive = s === order.status;
+                const isPast = getStatusIndex(s) < getStatusIndex(order.status);
+                const isCancelled = order.status === 'cancelled';
+                return `<div style="
+                        flex:1;min-width:80px;padding:8px 4px;text-align:center;border-radius:var(--radius);font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.3px;
+                        background:${isActive ? 'var(--primary)' : isPast ? 'var(--success-bg)' : 'var(--bg)'};
+                        color:${isActive ? 'white' : isPast ? 'var(--success)' : 'var(--text-muted)'};
+                        border:1px solid ${isActive ? 'var(--primary)' : isPast ? 'var(--success)' : 'var(--border)'};
+                        ${isCancelled ? 'opacity:.4' : ''}
+                    ">
+                        <i class="fas ${statusIcon(s)}" style="display:block;font-size:.9rem;margin-bottom:4px"></i>
+                        ${s}
+                    </div>`;
+            }).join('')}
+            </div>
+            ${order.status === 'cancelled' ? '<div style="text-align:center;margin-top:8px;color:var(--danger);font-weight:600;font-size:.85rem"><i class="fas fa-times-circle"></i> This order was cancelled</div>' : ''}
+        </div>
+
+        <!-- Update Form -->
+        <form onsubmit="submitOrderUpdate(event, '${order._id}')">
+            <div class="form-row">
+                <div class="form-group">
+                    <label><i class="fas fa-truck"></i> Order Status</label>
+                    <select id="updStatus">
+                        ${['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'].map(s =>
+                `<option value="${s}" ${order.status === s ? 'selected' : ''}>${s.charAt(0).toUpperCase() + s.slice(1)}</option>`
+            ).join('')}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-credit-card"></i> Payment Status</label>
+                    <select id="updPayment">
+                        ${['pending', 'paid', 'failed', 'refunded'].map(s =>
+                `<option value="${s}" ${order.paymentStatus === s ? 'selected' : ''}>${s.charAt(0).toUpperCase() + s.slice(1)}</option>`
+            ).join('')}
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label><i class="fas fa-barcode"></i> Tracking Number</label>
+                <input type="text" id="updTracking" value="${order.trackingNumber || ''}" placeholder="Enter tracking number (optional)">
+            </div>
+
+            <div style="display:flex;gap:10px;margin-top:8px">
+                <button type="submit" class="btn btn-primary" id="updOrderBtn">
+                    <i class="fas fa-save"></i> Save Changes
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="document.getElementById('orderUpdateModal').remove()">
+                    Cancel
+                </button>
+            </div>
+        </form>
+    </div>`;
+
+            document.body.appendChild(overlay);
+        }
+
+        function getStatusIndex(status) {
+            const order = ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'];
+            return order.indexOf(status);
+        }
+
+        async function submitOrderUpdate(e, orderId) {
+            e.preventDefault();
+            const btn = document.getElementById('updOrderBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+
+            try {
+                const data = {
+                    status: document.getElementById('updStatus').value,
+                    paymentStatus: document.getElementById('updPayment').value,
+                    trackingNumber: document.getElementById('updTracking').value
+                };
+
+                const result = await Api.put(`/admin/orders/${orderId}`, data);
+
+                showToast(result.message || 'Order updated successfully! ✅');
+                document.getElementById('orderUpdateModal').remove();
+                loadOrds(); // Refresh the orders table
+            } catch (e) {
+                showToast(e.message, 'error');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-save"></i> Save Changes';
+            }
+        }
+
+        async function updOrdStatus(id, status) { try { await Api.put(`/admin/orders/${id}`, { status }); showToast(`Status → ${status}`); } catch (e) { showToast(e.message, 'error'); loadOrds(); } }
+        async function markPaid(id) { try { await Api.put(`/admin/orders/${id}`, { paymentStatus: 'paid' }); showToast('Marked as paid ✓'); loadOrds(); } catch (e) { showToast(e.message, 'error'); } }
+
+        async function loadUsrs() {
+            const c = document.getElementById('adminC'); showLoading(c);
+            try {
+                const d = await Api.get('/admin/users');
+                c.innerHTML = `
+                <h2 style="margin-bottom:24px"><i class="fas fa-users" style="color:var(--primary);margin-right:8px"></i>Users (${d.users.length})</h2>
+                <div class="table-wrap"><table class="admin-table"><thead><tr><th>User</th><th>Email</th><th>Role</th><th>Phone</th><th>Joined</th></tr></thead>
+                <tbody>${d.users.map(u => `<tr>
+                    <td style="display:flex;align-items:center;gap:10px"><div style="width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--primary),#8B5CF6);color:white;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.8rem;flex-shrink:0">${u.name[0].toUpperCase()}</div><strong>${u.name}</strong></td>
+                    <td>${u.email}</td>
+                    <td><span class="status-badge ${u.role === 'admin' ? 'status-delivered' : 'status-pending'}">${u.role}</span></td>
+                    <td>${u.phone || '—'}</td>
+                    <td>${new Date(u.createdAt).toLocaleDateString()}</td>
+                </tr>`).join('')}</tbody></table></div>`;
+            } catch (e) { c.innerHTML = `<p>Error: ${e.message}</p>`; }
+        }
+    </script>
+</body>
+
+</html>
