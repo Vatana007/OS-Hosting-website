@@ -13,14 +13,20 @@
     <main class="page-container">
         <div class="admin-layout">
             <div class="admin-sidebar">
-                <h3>Admin Panel</h3>
-                <a href="#" class="active" onclick="showTab('dash',this);return false"><i class="fas fa-chart-line"></i>
+                <div class="admin-brand">
+                    <div class="logo-icon" style="width:32px;height:32px;font-size:.8rem;border-radius:8px;"><i
+                            class="fas fa-store"></i></div>
+                    <span style="font-weight:800;font-size:1.15rem;color:var(--text);letter-spacing:-0.5px;">Shop<span
+                            style="color:var(--primary)">Hub</span> Admin</span>
+                </div>
+                <h3 style="margin-top:8px;">Main Menu</h3>
+                <a href="#" class="active" onclick="showTab('dash',this);return false"><i class="fas fa-chart-pie"></i>
                     Dashboard</a>
-                <a href="#" onclick="showTab('prods',this);return false"><i class="fas fa-boxes-stacked"></i>
-                    Products</a>
-                <a href="#" onclick="showTab('ords',this);return false"><i class="fas fa-file-invoice"></i> Orders</a>
-                <a href="#" onclick="showTab('usrs',this);return false"><i class="fas fa-users"></i> Users</a>
+                <a href="#" onclick="showTab('prods',this);return false"><i class="fas fa-box-open"></i> Products</a>
+                <a href="#" onclick="showTab('ords',this);return false"><i class="fas fa-receipt"></i> Orders</a>
+                <a href="#" onclick="showTab('usrs',this);return false"><i class="fas fa-users"></i> Customers</a>
             </div>
+
             <div class="admin-content" id="adminC">
                 <div class="loading">
                     <div class="spinner"></div>
@@ -94,22 +100,46 @@
             try {
                 const d = await Api.get('/admin/stats'), s = d.stats;
                 c.innerHTML = `
-                <h2 style="margin-bottom:24px;display:flex;align-items:center;gap:10px"><i class="fas fa-chart-line" style="color:var(--primary)"></i> Dashboard</h2>
-                <div class="stats-grid">
-                    <div class="stat-card"><div class="stat-icon"><i class="fas fa-dollar-sign"></i></div><div class="stat-value">${formatPrice(s.totalRevenue)}</div><div class="stat-label">Total Revenue</div></div>
-                    <div class="stat-card"><div class="stat-icon"><i class="fas fa-shopping-cart"></i></div><div class="stat-value">${s.totalOrders}</div><div class="stat-label">Total Orders</div></div>
-                    <div class="stat-card"><div class="stat-icon"><i class="fas fa-box"></i></div><div class="stat-value">${s.totalProducts}</div><div class="stat-label">Products</div></div>
-                    <div class="stat-card"><div class="stat-icon"><i class="fas fa-users"></i></div><div class="stat-value">${s.totalUsers}</div><div class="stat-label">Customers</div></div>
+                <div style="margin-bottom:28px">
+                    <h2 style="font-size:1.6rem;font-weight:800;color:var(--text);letter-spacing:-0.5px;">Dashboard Overview</h2>
+                    <p style="color:var(--text-muted);font-size:0.9rem;margin-top:4px;">Welcome back, here's what's happening today.</p>
                 </div>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
-                    <div><h3 style="margin-bottom:14px"><i class="fas fa-clock" style="color:var(--primary);margin-right:8px"></i>Recent Orders</h3>
-                        <div class="table-wrap"><table class="admin-table"><thead><tr><th>Order</th><th>Customer</th><th>Total</th><th>Status</th></tr></thead>
-                        <tbody>${s.recentOrders.map(o => `<tr><td><strong>#${o._id.slice(-6).toUpperCase()}</strong></td><td>${o.user?.name || 'N/A'}</td><td>${formatPrice(o.totalAmount)}</td><td><span class="status-badge status-${o.status}">${o.status}</span></td></tr>`).join('')}</tbody></table></div>
+                
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon-wrap" style="background:var(--primary-light);color:var(--primary)"><i class="fas fa-wallet"></i></div>
+                        <div class="stat-info"><span class="stat-label">Total Revenue</span><span class="stat-value">${formatPrice(s.totalRevenue)}</span></div>
                     </div>
-                    <div><h3 style="margin-bottom:14px"><i class="fas fa-exclamation-triangle" style="color:var(--warning);margin-right:8px"></i>Low Stock</h3>
-                        ${!s.lowStock.length ? '<p style="color:var(--text-muted);padding:20px"><i class="fas fa-check-circle" style="color:var(--success)"></i> All well stocked</p>' : `
+                    <div class="stat-card">
+                        <div class="stat-icon-wrap" style="background:var(--success-bg);color:var(--success)"><i class="fas fa-shopping-cart"></i></div>
+                        <div class="stat-info"><span class="stat-label">Total Orders</span><span class="stat-value">${s.totalOrders}</span></div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon-wrap" style="background:var(--info-bg);color:var(--info)"><i class="fas fa-box-open"></i></div>
+                        <div class="stat-info"><span class="stat-label">Products</span><span class="stat-value">${s.totalProducts}</span></div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon-wrap" style="background:var(--warning-bg);color:var(--warning)"><i class="fas fa-users"></i></div>
+                        <div class="stat-info"><span class="stat-label">Customers</span><span class="stat-value">${s.totalUsers}</span></div>
+                    </div>
+                </div>
+
+                <div style="display:grid;grid-template-columns:1.5fr 1fr;gap:24px;margin-top:10px;">
+                    <div class="admin-panel-section" style="margin-bottom:0;">
+                        <div class="admin-panel-header">
+                            <h3><i class="fas fa-receipt" style="color:var(--text-muted);"></i> Recent Orders</h3>
+                        </div>
+                        <div class="table-wrap"><table class="admin-table"><thead><tr><th>Order</th><th>Customer</th><th>Total</th><th>Status</th></tr></thead>
+                        <tbody>${s.recentOrders.map(o => `<tr><td><strong style="color:var(--text)">#${o._id.slice(-6).toUpperCase()}</strong></td><td><div style="font-weight:600;color:var(--text)">${o.user?.name || 'N/A'}</div></td><td><strong style="color:var(--text)">${formatPrice(o.totalAmount)}</strong></td><td><span class="status-badge status-${o.status}">${o.status}</span></td></tr>`).join('')}</tbody></table></div>
+                    </div>
+                    
+                    <div class="admin-panel-section" style="margin-bottom:0;">
+                        <div class="admin-panel-header">
+                            <h3><i class="fas fa-triangle-exclamation" style="color:var(--text-muted);"></i> Low Stock Alerts</h3>
+                        </div>
+                        ${!s.lowStock.length ? '<div class="empty-state" style="padding:30px 10px"><i class="fas fa-check-circle" style="color:var(--success);font-size:2rem;margin-bottom:10px"></i><div style="font-weight:600">Inventory is healthy</div></div>' : `
                         <div class="table-wrap"><table class="admin-table"><thead><tr><th>Product</th><th>Stock</th></tr></thead>
-                        <tbody>${s.lowStock.map(p => `<tr><td>${p.name}</td><td><span style="color:${p.stock === 0 ? 'var(--danger)' : 'var(--warning)'};font-weight:700">${p.stock}</span></td></tr>`).join('')}</tbody></table></div>`}
+                        <tbody>${s.lowStock.map(p => `<tr><td><div style="font-weight:600;font-size:0.85rem;color:var(--text)">${p.name}</div></td><td><span style="background:${p.stock === 0 ? 'var(--danger-bg)' : 'var(--warning-bg)'};color:${p.stock === 0 ? 'var(--danger)' : 'var(--warning)'};padding:4px 10px;border-radius:20px;font-weight:700;font-size:0.75rem">${p.stock} left</span></td></tr>`).join('')}</tbody></table></div>`}
                     </div>
                 </div>`;
             } catch (e) { c.innerHTML = `<p>Error: ${e.message}</p>`; }
@@ -121,22 +151,127 @@
                 const d = await Api.get('/admin/products');
                 c.innerHTML = `
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:12px">
-                    <h2><i class="fas fa-boxes-stacked" style="color:var(--primary);margin-right:8px"></i>Products (${d.products.length})</h2>
-                    <button class="btn btn-primary" onclick="openModal()"><i class="fas fa-plus"></i> Add Product</button>
+                    <div>
+                        <h2 style="font-size:1.6rem;font-weight:800;color:var(--text);letter-spacing:-0.5px;">Product Catalog</h2>
+                        <p style="color:var(--text-muted);font-size:0.9rem;margin-top:4px;">Manage your inventory (${d.products.length} items).</p>
+                    </div>
+                    <button class="btn btn-primary btn-lg" onclick="openModal()" style="border-radius:var(--radius-full);box-shadow:0 4px 12px var(--primary-glow)"><i class="fas fa-plus"></i> Add Product</button>
                 </div>
-                <div class="table-wrap"><table class="admin-table"><thead><tr><th>Image</th><th>Name</th><th>Category</th><th>Price</th><th>Stock</th><th>Rating</th><th>Actions</th></tr></thead>
-                <tbody>${d.products.map(p => `<tr>
-                    <td><img src="${p.image}" alt="" onerror="this.src='https://placehold.co/46x46/e2e8f0/64748b?text=P'"></td>
-                    <td><strong>${p.name}</strong>${p.featured ? ' <i class="fas fa-star" style="color:var(--accent);font-size:.7rem"></i>' : ''}</td>
-                    <td><i class="fas ${catIcon(p.category)}" style="color:var(--text-muted);font-size:.7rem;margin-right:4px"></i>${p.category}</td>
-                    <td><strong>${formatPrice(p.price)}</strong></td>
-                    <td><span style="color:${p.stock <= 5 ? 'var(--danger)' : 'var(--success)'};font-weight:700">${p.stock}</span></td>
-                    <td>${starsHTML(p.rating)} <span style="color:var(--text-muted);font-size:.75rem">(${p.numReviews})</span></td>
-                    <td class="actions">
-                        <button class="btn btn-sm btn-secondary" onclick='editProd(${JSON.stringify(p)})'><i class="fas fa-pen"></i></button>
-                        <button class="btn btn-sm btn-danger" onclick="delProd('${p._id}')"><i class="fas fa-trash"></i></button>
-                    </td>
-                </tr>`).join('')}</tbody></table></div>`;
+                <div class="admin-panel-section" style="padding:0; overflow:hidden;">
+                    <div class="table-wrap" style="border:none;border-radius:0;"><table class="admin-table"><thead><tr><th>Product Details</th><th>Category</th><th>Price</th><th>Stock</th><th>Rating</th><th>Actions</th></tr></thead>
+                    <tbody>${d.products.map(p => `<tr>
+                        <td style="display:flex;align-items:center;gap:14px;">
+                            <img src="${p.image}" alt="" style="width:48px;height:48px;border-radius:12px;box-shadow:var(--shadow-sm)" onerror="this.src='https://placehold.co/48x48/e2e8f0/64748b?text=P'">
+                            <div>
+                                <div style="font-weight:600;color:var(--text);font-size:0.95rem;">${p.name} ${p.featured ? '<i class="fas fa-star" style="color:var(--accent);font-size:0.7rem;margin-left:4px;" title="Featured"></i>' : ''}</div>
+                                <div style="font-size:0.75rem;color:var(--text-muted);margin-top:2px;">ID: ${p._id.slice(-8).toUpperCase()}</div>
+                            </div>
+                        </td>
+                        <td><span style="background:var(--bg);padding:6px 12px;border-radius:20px;font-size:0.75rem;font-weight:600;color:var(--text-secondary);"><i class="fas ${catIcon(p.category)}" style="margin-right:6px"></i>${p.category}</span></td>
+                        <td><strong style="font-size:1rem;color:var(--text)">${formatPrice(p.price)}</strong></td>
+                        <td><span style="background:${p.stock <= 5 ? 'var(--danger-bg)' : 'var(--success-bg)'};color:${p.stock <= 5 ? 'var(--danger)' : 'var(--success)'};padding:4px 10px;border-radius:20px;font-weight:700;font-size:0.75rem">${p.stock} in stock</span></td>
+                        <td><div style="display:flex;align-items:center;gap:4px;">${starsHTML(p.rating)} <span style="color:var(--text-muted);font-size:0.75rem;font-weight:600;">(${p.numReviews})</span></div></td>
+                        <td class="actions">
+                            <button class="btn btn-sm btn-ghost" onclick='editProd(${JSON.stringify(p)})' style="background:var(--bg);color:var(--text-secondary);"><i class="fas fa-pen"></i></button>
+                            <button class="btn btn-sm btn-ghost" onclick="delProd('${p._id}')" style="background:var(--danger-bg);color:var(--danger);"><i class="fas fa-trash"></i></button>
+                        </td>
+                    </tr>`).join('')}</tbody></table></div>
+                </div>`;
+            } catch (e) { c.innerHTML = `<p>Error: ${e.message}</p>`; }
+        }
+
+        async function loadOrds() {
+            const c = document.getElementById('adminC'); showLoading(c);
+            try {
+                const d = await Api.get('/admin/orders');
+                const orders = d.orders;
+
+                c.innerHTML = `
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:12px">
+                    <div>
+                        <h2 style="font-size:1.6rem;font-weight:800;color:var(--text);letter-spacing:-0.5px;">Orders Management</h2>
+                        <p style="color:var(--text-muted);font-size:0.9rem;margin-top:4px;">Track and fulfill customer orders.</p>
+                    </div>
+                    <div style="display:flex;gap:4px;flex-wrap:wrap;background:var(--bg-card);padding:6px;border-radius:var(--radius-full);border:1px solid var(--border-light);box-shadow:var(--shadow-xs);">
+                        <button class="btn btn-sm" style="border-radius:20px;background:${!orderFilter ? 'var(--primary)' : 'transparent'};color:${!orderFilter ? 'white' : 'var(--text-secondary)'};box-shadow:none;" onclick="orderFilter='';loadOrds()">All</button>
+                        <button class="btn btn-sm" style="border-radius:20px;background:${orderFilter === 'pending' ? 'var(--primary)' : 'transparent'};color:${orderFilter === 'pending' ? 'white' : 'var(--text-secondary)'};box-shadow:none;" onclick="orderFilter='pending';loadOrds()">Pending</button>
+                        <button class="btn btn-sm" style="border-radius:20px;background:${orderFilter === 'processing' ? 'var(--primary)' : 'transparent'};color:${orderFilter === 'processing' ? 'white' : 'var(--text-secondary)'};box-shadow:none;" onclick="orderFilter='processing';loadOrds()">Processing</button>
+                        <button class="btn btn-sm" style="border-radius:20px;background:${orderFilter === 'shipped' ? 'var(--primary)' : 'transparent'};color:${orderFilter === 'shipped' ? 'white' : 'var(--text-secondary)'};box-shadow:none;" onclick="orderFilter='shipped';loadOrds()">Shipped</button>
+                    </div>
+                </div>
+
+                <div class="admin-panel-section" style="padding:0; overflow:hidden;">
+                ${!filteredOrders(orders).length ?
+                        '<div class="empty-state" style="padding:60px"><div class="empty-icon"><i class="fas fa-inbox"></i></div><h2>No orders found</h2></div>' :
+                        `<div class="table-wrap" style="border:none;border-radius:0;"><table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Order ID</th>
+                            <th>Customer</th>
+                            <th>Items</th>
+                            <th>Total Amount</th>
+                            <th>Status</th>
+                            <th>Payment</th>
+                            <th>Date</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${filteredOrders(orders).map(o => `
+                        <tr>
+                            <td><strong style="color:var(--text)">#${o._id.slice(-8).toUpperCase()}</strong></td>
+                            <td>
+                                <div style="font-weight:600;color:var(--text);font-size:0.9rem;">${o.user?.name || 'N/A'}</div>
+                                <div style="font-size:.75rem;color:var(--text-muted)">${o.user?.email || ''}</div>
+                            </td>
+                            <td>
+                                <span style="background:var(--bg);padding:4px 10px;border-radius:20px;font-weight:600;font-size:.75rem;color:var(--text-secondary);">
+                                    ${o.items.length} item${o.items.length > 1 ? 's' : ''}
+                                </span>
+                            </td>
+                            <td><strong style="font-size:1rem;color:var(--text)">${formatPrice(o.totalAmount)}</strong></td>
+                            <td><span class="status-badge status-${o.status}"><i class="fas ${statusIcon(o.status)}"></i> ${o.status}</span></td>
+                            <td><span class="status-badge status-${o.paymentStatus}"><i class="fas fa-credit-card"></i> ${o.paymentStatus}</span></td>
+                            <td style="white-space:nowrap;font-size:.82rem;color:var(--text-muted);font-weight:500;">${new Date(o.createdAt).toLocaleDateString()}</td>
+                            <td>
+                                <button class="btn btn-sm btn-ghost" onclick='openOrderModal(${JSON.stringify(o)})' style="background:var(--bg);color:var(--primary);font-weight:700;" title="Manage Order">
+                                    <i class="fas fa-sliders-h"></i> Manage
+                                </button>
+                            </td>
+                        </tr>`).join('')}
+                    </tbody>
+                </table></div>`}</div>`;
+            } catch (e) { c.innerHTML = `<p>Error: ${e.message}</p>`; }
+        }
+
+        async function loadUsrs() {
+            const c = document.getElementById('adminC'); showLoading(c);
+            try {
+                const d = await Api.get('/admin/users');
+                c.innerHTML = `
+                <div style="margin-bottom:24px;">
+                    <h2 style="font-size:1.6rem;font-weight:800;color:var(--text);letter-spacing:-0.5px;">User Directory</h2>
+                    <p style="color:var(--text-muted);font-size:0.9rem;margin-top:4px;">Manage your registered customers and administrators.</p>
+                </div>
+                
+                <div class="admin-panel-section" style="padding:0; overflow:hidden;">
+                    <div class="table-wrap" style="border:none;border-radius:0;"><table class="admin-table"><thead><tr><th>User Profile</th><th>Contact Info</th><th>Role</th><th>Joined Date</th></tr></thead>
+                    <tbody>${d.users.map(u => `<tr>
+                        <td style="display:flex;align-items:center;gap:14px;">
+                            <div style="width:44px;height:44px;border-radius:14px;background:var(--primary-light);color:var(--primary);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.2rem;flex-shrink:0">${u.name[0].toUpperCase()}</div>
+                            <div>
+                                <strong style="color:var(--text);font-size:0.95rem;">${u.name}</strong>
+                                <div style="font-size:0.75rem;color:var(--text-muted);margin-top:2px;">ID: ${u._id.slice(-8).toUpperCase()}</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div style="color:var(--text);font-size:0.85rem;font-weight:500;"><i class="fas fa-envelope" style="color:var(--text-muted);margin-right:8px;"></i>${u.email}</div>
+                            <div style="color:var(--text-secondary);font-size:0.8rem;margin-top:4px;"><i class="fas fa-phone" style="color:var(--text-muted);margin-right:8px;"></i>${u.phone || 'No phone provided'}</div>
+                        </td>
+                        <td><span style="background:${u.role === 'admin' ? 'var(--primary-light)' : 'var(--bg)'};color:${u.role === 'admin' ? 'var(--primary)' : 'var(--text-secondary)'};padding:6px 14px;border-radius:20px;font-weight:700;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.5px;">${u.role}</span></td>
+                        <td style="color:var(--text-muted);font-size:0.85rem;font-weight:500;"><i class="far fa-calendar-alt" style="margin-right:6px;"></i>${new Date(u.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</td>
+                    </tr>`).join('')}</tbody></table></div>
+                </div>`;
             } catch (e) { c.innerHTML = `<p>Error: ${e.message}</p>`; }
         }
 
@@ -176,67 +311,6 @@
         async function delProd(id) {
             if (!confirm('Delete this product permanently?')) return;
             try { await Api.delete(`/admin/products/${id}`); showToast('Product deleted'); loadProds(); } catch (e) { showToast(e.message, 'error'); }
-        }
-
-        async function loadOrds() {
-            const c = document.getElementById('adminC'); showLoading(c);
-            try {
-                const d = await Api.get('/admin/orders');
-                const orders = d.orders;
-
-                c.innerHTML = `
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:12px">
-            <h2><i class="fas fa-file-invoice" style="color:var(--primary);margin-right:8px"></i>Orders (${orders.length})</h2>
-            <div style="display:flex;gap:8px;flex-wrap:wrap">
-                <button class="btn btn-sm ${!orderFilter ? 'btn-primary' : 'btn-secondary'}" onclick="orderFilter='';loadOrds()">All</button>
-                <button class="btn btn-sm ${orderFilter === 'pending' ? 'btn-primary' : 'btn-secondary'}" onclick="orderFilter='pending';loadOrds()">Pending</button>
-                <button class="btn btn-sm ${orderFilter === 'processing' ? 'btn-primary' : 'btn-secondary'}" onclick="orderFilter='processing';loadOrds()">Processing</button>
-                <button class="btn btn-sm ${orderFilter === 'shipped' ? 'btn-primary' : 'btn-secondary'}" onclick="orderFilter='shipped';loadOrds()">Shipped</button>
-                <button class="btn btn-sm ${orderFilter === 'delivered' ? 'btn-primary' : 'btn-secondary'}" onclick="orderFilter='delivered';loadOrds()">Delivered</button>
-            </div>
-        </div>
-
-        ${!filteredOrders(orders).length ?
-                        '<div class="empty-state" style="padding:40px"><div class="empty-icon"><i class="fas fa-inbox"></i></div><h2>No orders found</h2></div>' :
-                        `<div class="table-wrap"><table class="admin-table">
-            <thead>
-                <tr>
-                    <th>Order ID</th>
-                    <th>Customer</th>
-                    <th>Items</th>
-                    <th>Total</th>
-                    <th>Status</th>
-                    <th>Payment</th>
-                    <th>Date</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${filteredOrders(orders).map(o => `
-                <tr>
-                    <td><strong style="color:var(--primary)">#${o._id.slice(-8).toUpperCase()}</strong></td>
-                    <td>
-                        <div style="font-weight:600">${o.user?.name || 'N/A'}</div>
-                        <div style="font-size:.75rem;color:var(--text-muted)">${o.user?.email || ''}</div>
-                    </td>
-                    <td>
-                        <span style="background:var(--bg);padding:2px 8px;border-radius:var(--radius);font-weight:600;font-size:.82rem">
-                            ${o.items.length} item${o.items.length > 1 ? 's' : ''}
-                        </span>
-                    </td>
-                    <td><strong>${formatPrice(o.totalAmount)}</strong></td>
-                    <td><span class="status-badge status-${o.status}"><i class="fas ${statusIcon(o.status)}"></i> ${o.status}</span></td>
-                    <td><span class="status-badge status-${o.paymentStatus}"><i class="fas fa-credit-card"></i> ${o.paymentStatus}</span></td>
-                    <td style="white-space:nowrap;font-size:.82rem;color:var(--text-muted)">${new Date(o.createdAt).toLocaleDateString()}</td>
-                    <td>
-                        <button class="btn btn-sm btn-primary" onclick='openOrderModal(${JSON.stringify(o)})' title="Update Order">
-                            <i class="fas fa-pen"></i>
-                        </button>
-                    </td>
-                </tr>`).join('')}
-            </tbody>
-        </table></div>`}`;
-            } catch (e) { c.innerHTML = `<p>Error: ${e.message}</p>`; }
         }
 
         let orderFilter = '';
@@ -406,23 +480,6 @@
 
         async function updOrdStatus(id, status) { try { await Api.put(`/admin/orders/${id}`, { status }); showToast(`Status → ${status}`); } catch (e) { showToast(e.message, 'error'); loadOrds(); } }
         async function markPaid(id) { try { await Api.put(`/admin/orders/${id}`, { paymentStatus: 'paid' }); showToast('Marked as paid ✓'); loadOrds(); } catch (e) { showToast(e.message, 'error'); } }
-
-        async function loadUsrs() {
-            const c = document.getElementById('adminC'); showLoading(c);
-            try {
-                const d = await Api.get('/admin/users');
-                c.innerHTML = `
-                <h2 style="margin-bottom:24px"><i class="fas fa-users" style="color:var(--primary);margin-right:8px"></i>Users (${d.users.length})</h2>
-                <div class="table-wrap"><table class="admin-table"><thead><tr><th>User</th><th>Email</th><th>Role</th><th>Phone</th><th>Joined</th></tr></thead>
-                <tbody>${d.users.map(u => `<tr>
-                    <td style="display:flex;align-items:center;gap:10px"><div style="width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--primary),#8B5CF6);color:white;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.8rem;flex-shrink:0">${u.name[0].toUpperCase()}</div><strong>${u.name}</strong></td>
-                    <td>${u.email}</td>
-                    <td><span class="status-badge ${u.role === 'admin' ? 'status-delivered' : 'status-pending'}">${u.role}</span></td>
-                    <td>${u.phone || '—'}</td>
-                    <td>${new Date(u.createdAt).toLocaleDateString()}</td>
-                </tr>`).join('')}</tbody></table></div>`;
-            } catch (e) { c.innerHTML = `<p>Error: ${e.message}</p>`; }
-        }
     </script>
 </body>
 
