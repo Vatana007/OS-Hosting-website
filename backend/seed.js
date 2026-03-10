@@ -171,7 +171,7 @@ const seedDB = async () => {
         await User.create({
             name: 'Vuth Vatana',
             email: 'vatana@shop.com',
-            password: '123',
+            password: 'password123',
             role: 'user',
             phone: '555-0101',
             address: { street: '456 User Avenue', city: 'Los Angeles', state: 'CA', zip: '90001', country: 'US' }
@@ -180,7 +180,7 @@ const seedDB = async () => {
         await User.create({
             name: 'Leng Sovathanak',
             email: 'vathanak@shop.com',
-            password: '123',
+            password: 'password123',
             role: 'user',
             phone: '555-0102',
             address: { street: '789 Test Lane', city: 'Chicago', state: 'IL', zip: '60601', country: 'US' }
@@ -189,7 +189,7 @@ const seedDB = async () => {
         await User.create({
             name: 'Phol Pheas',
             email: 'pheas@shop.com',
-            password: '123',
+            password: 'password123',
             role: 'user',
             phone: '555-1234',
             address: { street: '123 Main St', city: 'Anytown', state: 'CA', zip: '12345', country: 'US' }
@@ -198,7 +198,7 @@ const seedDB = async () => {
         await User.create({
             name: 'NOK Sreylinh',
             email: 'sreylinh@shop.com',
-            password: '123',
+            password: 'password123',
             role: 'user',
             phone: '555-5555',
             address: { street: '123 Test Lane', city: 'Anytown', state: 'CA', zip: '12345', country: 'US' }
@@ -207,7 +207,7 @@ const seedDB = async () => {
         await User.create({
             name: 'CHHAY Udom',
             email: 'udom@shop.com',
-            password: '123',
+            password: 'password123',
             role: 'user',
             phone: '555-1111',
             address: { street: '123', city: 'Anytown', state: 'CA', zip: '12345', country: 'US' }
